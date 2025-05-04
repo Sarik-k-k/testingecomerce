@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Home - E-commerce{% endblock %}
+{% block content %}
+<h1 class="mb-4">Welcome to Our Store</h1>
+
+{% if products %}
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for product in products %}
+            <div class="col">
+                <div class="card h-100">
+                    {% if product.image_url %}
+                        <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
+                            No Image
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">${{ product.price | round(2) }}</p>
+                        {% if product.stock > 0 %}
+                            <form action="{{ url_for('main.add_to_cart', product_id=product.id) }}" method="POST" class="d-inline">
+                                <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" class="form-control d-inline-block w-auto" style="width: 80px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Add to Cart</button>
+                            </form>
+                        {% else %}
+                            <span class="text-danger">Out of Stock</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('main.product', product_id=product.id) }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-center">No products available. Please check back later.</p>
+{% endif %}
+{% endblock %}
