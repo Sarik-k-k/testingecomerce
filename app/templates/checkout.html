@@ -1,40 +1,89 @@
 {% extends "base.html" %}
-{% block title %}Home - E-commerce{% endblock %}
+{% block title %}Checkout - E-commerce{% endblock %}
 {% block content %}
-<h1 class="mb-4">Welcome to Our Store</h1>
+<h1 class="mb-4">Checkout</h1>
 
-{% if products %}
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-        {% for product in products %}
-            <div class="col">
-                <div class="card h-100">
-                    {% if product.image_url %}
-                        <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
-                    {% else %}
-                        <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
-                            No Image
-                        </div>
-                    {% endif %}
-                    <div class="card-body">
-                        <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="card-text">${{ product.price | round(2) }}</p>
-                        {% if product.stock > 0 %}
-                            <form action="{{ url_for('main.add_to_cart', product_id=product.id) }}" method="POST" class="d-inline">
-                                <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" class="form-control d-inline-block w-auto" style="width: 80px;">
-                                <button type="submit" class="btn btn-primary btn-sm">Add to Cart</button>
-                            </form>
-                        {% else %}
-                            <span class="text-danger">Out of Stock</span>
-                        {% endif %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h4>Your Order</h4>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>${{ item.product.price | round(2) }}</td>
+                                <td>${{ (item.quantity * item.product.price) | round(2) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <h5 class="text-end">Total: ${{ total | round(2) }}</h5>
+
+                <form method="POST" id="payment-form">
+                    <div class="mb-3">
+                        <label for="shipping_address" class="form-label">Shipping Address</label>
+                        <textarea class="form-control" id="shipping_address" name="shipping_address" rows="4" required></textarea>
                     </div>
-                    <div class="card-footer">
-                        <a href="{{ url_for('main.product', product_id=product.id) }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                    <div class="mb-3">
+                        <label for="card-element" class="form-label">Credit or Debit Card</label>
+                        <div id="card-element" class="form-control"></div>
+                        <div id="card-errors" class="text-danger"></div>
                     </div>
-                </div>
+                    <button type="submit" class="btn btn-primary">Pay Now</button>
+                </form>
             </div>
-        {% endfor %}
+        </div>
     </div>
-{% else %}
-    <p class="text-center">No products available. Please check back later.</p>
-{% endif %}
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script src="{{ url_for('static', filename='js/stripe.js') }}"></script>
+<script>
+    var stripe = Stripe('{{ stripe_publishable_key }}');
+    var elements = stripe.elements();
+    var card = elements.create('card');
+    card.mount('#card-element');
+
+    card.on('change', function(event) {
+        var displayError = document.getElementById('card-errors');
+        if (event.error) {
+            displayError.textContent = event.error.message;
+        } else {
+            displayError.textContent = '';
+        }
+    });
+
+    var form = document.getElementById('payment-form');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        stripe.createToken(card).then(function(result) {
+            if (result.error) {
+                document.getElementById('card-errors').textContent = result.error.message;
+            } else {
+                stripeTokenHandler(result.token);
+            }
+        });
+    });
+
+    function stripeTokenHandler(token) {
+        var form = document.getElementById('payment-form');
+        var hiddenInput = document.createElement('input');
+        hiddenInput.setAttribute('type', 'hidden');
+        hiddenInput.setAttribute('name', 'stripeToken');
+        hiddenInput.setAttribute('value', token.id);
+        form.appendChild(hiddenInput);
+        form.submit();
+    }
+</script>
 {% endblock %}

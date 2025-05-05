@@ -72,17 +72,22 @@ def checkout():
     total = sum(item.product.price * item.quantity for item in cart_items)
     if request.method == 'POST':
         stripe.api_key = current_app.config.get('STRIPE_SECRET_KEY')
+        stripe_token = request.form.get('stripeToken')
+        shipping_address = request.form.get('shipping_address')
+        
         try:
-            payment_intent = stripe.PaymentIntent.create(
+            charge = stripe.Charge.create(
                 amount=int(total * 100),  # Stripe expects amount in cents
                 currency='usd',
+                source=stripe_token,
+                description=f'Order for user {current_user.id}',
                 metadata={'user_id': current_user.id}
             )
             order = Order(
                 user_id=current_user.id,
                 total_amount=total,
-                status='pending',
-                shipping_address=request.form.get('shipping_address')
+                status='completed',
+                shipping_address=shipping_address
             )
             db.session.add(order)
             db.session.flush()
@@ -103,7 +108,7 @@ def checkout():
         except stripe.error.StripeError as e:
             flash(f'Payment failed: {str(e)}', 'danger')
     
-    return render_template('checkout.html', total=total, stripe_publishable_key=current_app.config.get('STRIPE_PUBLISHABLE_KEY'))
+    return render_template('checkout.html', cart_items=cart_items, total=total, stripe_publishable_key=current_app.config.get('STRIPE_PUBLISHABLE_KEY'))
 
 @main.route('/orders')
 @login_required
